@@ -145,11 +145,11 @@ async def handle_sockets(websocket, path):
                     await websocket.send('out;' + pending_txt)
 
                     pending_txt = ''
-    except websockets.exceptions.ConnectionClosed as e:
-        print('exception caught:')
-        print(e)
-        dots_interpreter.terminate()
-        inter_thread.join()
+    # except websockets.exceptions.ConnectionClosed as e:
+    #     print('exception caught:')
+    #     print(e)
+    #     dots_interpreter.terminate()
+    #     inter_thread.join()
 
     number_of_sockets -= 1
 
