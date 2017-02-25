@@ -154,7 +154,7 @@ async def handle_sockets(websocket, path):
     number_of_sockets -= 1
 
 print('Starting server...')
-start_server = websockets.serve(handle_sockets, 'localhost', os.environ['HOME'])
+start_server = websockets.serve(handle_sockets, 'localhost', int(os.environ['PORT']))
 
 asyncio.get_event_loop().run_until_complete(start_server)
 asyncio.get_event_loop().run_forever()
