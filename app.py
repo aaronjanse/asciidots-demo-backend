@@ -4,6 +4,8 @@ import websockets
 import threading
 import time
 
+import os
+
 from dots import __main__ as dots_inter_file
 
 number_of_sockets = 0
@@ -152,7 +154,7 @@ async def handle_sockets(websocket, path):
     number_of_sockets -= 1
 
 print('Starting server...')
-start_server = websockets.serve(handle_sockets, 'localhost', 80)
+start_server = websockets.serve(handle_sockets, 'localhost', os.environ['HOME'])
 
 asyncio.get_event_loop().run_until_complete(start_server)
 asyncio.get_event_loop().run_forever()
