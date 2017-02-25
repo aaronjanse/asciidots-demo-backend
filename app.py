@@ -149,8 +149,10 @@ async def handle_sockets(websocket, path):
     except websockets.exceptions.ConnectionClosed as e:
         print('exception caught:')
         print(e)
-        dots_interpreter.terminate()
-        inter_thread.join()
+        
+        if dots_interpreter is not None:
+            dots_interpreter.terminate()
+            inter_thread.join()
 
     number_of_sockets -= 1
 
