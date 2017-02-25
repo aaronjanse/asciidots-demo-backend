@@ -155,7 +155,7 @@ async def handle_sockets(websocket, path):
     number_of_sockets -= 1
 
 print('Starting server...')
-start_server = websockets.serve(handle_sockets, '0.0.0.0', int(os.environ['PORT']) or 5000, ssl=ssl.SSLContext())
+start_server = websockets.serve(handle_sockets, '0.0.0.0', int(os.environ['PORT']) or 5000)
 
 asyncio.get_event_loop().run_until_complete(start_server)
 asyncio.get_event_loop().run_forever()
