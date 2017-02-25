@@ -88,7 +88,6 @@ async def handle_sockets(websocket, path):
     while True:
         message = await websocket.recv()
 
-
         tokens = message.split(';')
 
         instruction = tokens[0]
