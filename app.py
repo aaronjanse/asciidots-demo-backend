@@ -80,7 +80,7 @@ async def handle_sockets(websocket, path):
 
         finished = True
 
-    dots_inter = None
+    dots_interpreter = None
     inter_thread = None
 
     stopping = False
