@@ -137,22 +137,30 @@ async def handle_sockets(websocket, path):
             elif instruction == 'update':
                 if stopping:
                     stopping = False
-                elif pending_input and not input_done:
-                    await websocket.send('input;')
-
-                    input_result = await websocket.recv()
-                    input_done = True
                 elif pending_txt != '':
                     await websocket.send('out;' + pending_txt)
 
                     pending_txt = ''
+                elif pending_input and not input_done:
+                    await websocket.send('input;')
+
+                    got_result = False
+
+                    while not got_result:
+                        input_result = await websocket.recv()
+
+                        if input_result != 'update;':
+                            input_done = True
+                            got_result = True
     except websockets.exceptions.ConnectionClosed as e:
         print('exception caught:')
         print(e)
-        
+
         if dots_interpreter is not None:
             dots_interpreter.terminate()
             inter_thread.join()
+
+        print('terminated thread')
 
     number_of_sockets -= 1
 
