@@ -76,6 +76,8 @@ async def handle_sockets(websocket, path):
 
         try:
             dots_interpreter.run()
+        except websockets.exceptions.ConnectionClosed as e:
+            pass
         except Exception as e:
             print('error caught!')
             print(str(e))
@@ -153,6 +155,10 @@ async def handle_sockets(websocket, path):
                             input_done = True
                             got_result = True
     except websockets.exceptions.ConnectionClosed as e:
+        if dots_interpreter is not None:
+            dots_interpreter.terminate()
+            inter_thread.join()
+    except Exception as e:
         print('exception caught:')
         print(e)
 
