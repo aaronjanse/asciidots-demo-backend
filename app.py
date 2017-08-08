@@ -80,7 +80,9 @@ async def handle_sockets(websocket, path):
             pass
         except Exception as e:
             print('error caught!')
+            print('--- start error message ---')
             print(str(e))
+            print('--- end error message ---')
 
         finished = True
 
@@ -160,7 +162,7 @@ async def handle_sockets(websocket, path):
             inter_thread.join()
     except Exception as e:
         print('exception caught:')
-        print(e)
+        print(str(e))
 
         if dots_interpreter is not None:
             dots_interpreter.terminate()
