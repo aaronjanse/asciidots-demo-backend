@@ -142,9 +142,9 @@ async def handle_sockets(websocket, path):
                 if stopping:
                     stopping = False
                 elif pending_txt != '':
-                    if len(pending_txt) > 2**16:
+                    if len(pending_txt) > 2**15:
                         # Way to much text! We will cut some of it out to help reduce bandwidth
-                        pending_txt = pending_txt[128:] + '\n...\n' + pending_txt[:128]
+                        pending_txt = pending_txt[128:] + '...' + pending_txt[:128]
 
                     await websocket.send('out;' + pending_txt)
 
