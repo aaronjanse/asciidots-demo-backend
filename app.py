@@ -170,6 +170,14 @@ async def handle_sockets(websocket, path):
 
                 program = [li if len(li) > 0 else ' ' for li in program]
 
+                if interpreter is not None:
+                    await websocket.send('---Stopping---\n')
+                    interpreter.terminate()
+
+                    interpreter_thread.join()
+
+                pending_txt = ''
+
                 await websocket.send('---Starting---\n')
 
                 io_callbacks = IOCallbacksStorageConstructor(get_input=input_func, on_output=response_func, on_finish=nop, on_error=nop, on_microtick=on_microtick)
