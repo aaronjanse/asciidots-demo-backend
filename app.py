@@ -215,7 +215,7 @@ async def handle_sockets(websocket, path):
                     stopping = False
                 elif pending_txt != '':
                     if len(pending_txt) > 2**16:
-                        # Way to much text! We will cut some of it out to help reduce bandwidth
+                        # Way too much text. We will cut some of it out to help reduce bandwidth
                         pending_txt = pending_txt[128:] + '...' + pending_txt[:128]
                         print('---output clipped!---')
 
