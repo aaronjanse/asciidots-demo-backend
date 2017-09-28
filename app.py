@@ -4,7 +4,7 @@ import websockets
 import threading
 import time
 
-#### Backend Serer ####
+#### Backend Server ####
 
 import os
 
