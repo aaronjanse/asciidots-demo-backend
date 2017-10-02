@@ -18,8 +18,10 @@ import ssl
 
 number_of_sockets = 0
 
+
 def nop(*args, **kwargs):
     pass
+
 
 async def handle_sockets(websocket, path):
     global number_of_sockets
@@ -85,7 +87,7 @@ async def handle_sockets(websocket, path):
         nonlocal interpreter
         nonlocal pending_txt
 
-        time.sleep(0.05) # small delay for autostep
+        time.sleep(0.05)  # small delay for autostep
 
         debug_lines = 80
 
@@ -118,24 +120,23 @@ async def handle_sockets(websocket, path):
             for x in range(len(interpreter.env.world.map[y])):
                 char = interpreter.env.world.map[y][x]
 
-                if char==' ':
+                if char == ' ':
                     pending_txt += ' '
                 elif (x, y) in d_l:
-                    pending_txt += '\033[0;31m'+char+'\033[0m' # Red
+                    pending_txt += '\033[0;31m' + char + '\033[0m'  # Red
                 elif char.isLibWarp():
-                    pending_txt += '\033[0;32m'+char+'\033[0m'  # Green
+                    pending_txt += '\033[0;32m' + char + '\033[0m'  # Green
                 elif char.isWarp():
-                    pending_txt += '\033[0;33m'+char+'\033[0m' # Yellow
+                    pending_txt += '\033[0;33m' + char + '\033[0m'  # Yellow
                 elif char in '#@~' or char.isOper():
-                    pending_txt += '\033[0;34m'+char+'\033[0m' # Blue
-                elif char!='\n':
-                    pending_txt += char # White
+                    pending_txt += '\033[0;34m' + char + '\033[0m'  # Blue
+                elif char != '\n':
+                    pending_txt += char  # White
 
             pending_txt += '\n'
             display_y += 1
 
         pending_txt += ';end_debug;'
-
 
     def run_interpreter():
         nonlocal finished
@@ -182,12 +183,14 @@ async def handle_sockets(websocket, path):
 
                 await websocket.send('---Starting---\n')
 
-                io_callbacks = IOCallbacksStorageConstructor(get_input=input_func, on_output=response_func, on_finish=nop, on_error=nop, on_microtick=on_microtick)
+                io_callbacks = IOCallbacksStorageConstructor(
+                    get_input=input_func, on_output=response_func, on_finish=nop, on_error=nop, on_microtick=on_microtick)
 
                 try:
                     env = Env()
                     env.io = io_callbacks
-                    interpreter = AsciiDotsInterpreter(env, program, './asciidots', run_in_parallel=True)
+                    interpreter = AsciiDotsInterpreter(
+                        env, program, './asciidots', run_in_parallel=True)
                 except Exception as e:
                     io_callbacks.on_finish()
 
@@ -199,10 +202,10 @@ async def handle_sockets(websocket, path):
 
                     finished = True
 
-                interpreter_thread = threading.Thread(target=run_interpreter, daemon=True)
+                interpreter_thread = threading.Thread(
+                    target=run_interpreter, daemon=True)
 
                 interpreter_thread.start()
-
 
             elif instruction == 'stop' or (finished and pending_txt == ''):
                 if interpreter is not None:
@@ -221,7 +224,8 @@ async def handle_sockets(websocket, path):
                 elif pending_txt != '':
                     if len(pending_txt) > 2**16:
                         # Way too much text. We will cut some of it out to help reduce bandwidth
-                        pending_txt = pending_txt[128:] + '...' + pending_txt[:128]
+                        pending_txt = pending_txt[128:] + \
+                            '...' + pending_txt[:128]
                         print('---output clipped!---')
 
                     await websocket.send('out;' + pending_txt)
