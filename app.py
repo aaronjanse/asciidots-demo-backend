@@ -10,6 +10,7 @@ import os
 
 os.chdir('./asciidots')
 
+from asciidots.dots.environement import Env
 from asciidots.dots.interpreter import AsciiDotsInterpreter
 from asciidots.dots.callbacks import IOCallbacksStorageConstructor
 
@@ -89,10 +90,10 @@ async def handle_sockets(websocket, path):
         debug_lines = 80
 
         d_l = []
-        for idx in reversed(range(len(interpreter.get_all_dots()))):
-            d = interpreter.dots[idx]
-            if not d.state.isDeadState():
-                d_l.append((d.x, d.y))
+        for idx in reversed(range(len(interpreter.env.dots))):
+            d = interpreter.env.dots[idx]
+            if not d.state.is_dead():
+                d_l.append((d.pos.x, d.pos.y))
 
         special_char = False
 
@@ -102,11 +103,11 @@ async def handle_sockets(websocket, path):
 
         pending_txt += ';start_debug;'
 
-        for y in range(len(interpreter.world._data_array)):
+        for y in range(len(interpreter.env.world.map)):
             if display_y > debug_lines - 2:
                 break
 
-            if len(''.join(interpreter.world._data_array[y]).rstrip()) < 1:
+            if len(''.join(interpreter.env.world.map[y]).rstrip()) < 1:
                 if last_blank:
                     continue
                 else:
@@ -114,8 +115,8 @@ async def handle_sockets(websocket, path):
             else:
                 last_blank = False
 
-            for x in range(len(interpreter.world._data_array[y])):
-                char = interpreter.world._data_array[y][x]
+            for x in range(len(interpreter.env.world.map[y])):
+                char = interpreter.env.world.map[y][x]
 
                 if char==' ':
                     pending_txt += ' '
@@ -169,6 +170,7 @@ async def handle_sockets(websocket, path):
                 program = ';'.join(tokens[1:]).split('\n')
 
                 program = [li if len(li) > 0 else ' ' for li in program]
+                program = '\n'.join(program)
 
                 if interpreter is not None:
                     await websocket.send('---Stopping---\n')
@@ -183,13 +185,16 @@ async def handle_sockets(websocket, path):
                 io_callbacks = IOCallbacksStorageConstructor(get_input=input_func, on_output=response_func, on_finish=nop, on_error=nop, on_microtick=on_microtick)
 
                 try:
-                    interpreter = AsciiDotsInterpreter(program, './asciidots', io_callbacks)
+                    env = Env()
+                    env.io = io_callbacks
+                    interpreter = AsciiDotsInterpreter(env, program, './asciidots', run_in_parallel=True)
                 except Exception as e:
                     io_callbacks.on_finish()
 
                     await websocket.send('error during preprocessing!\n')
                     await websocket.send('(stacktrace hidden due to cross origin security reasons)\n')
                     await websocket.send(str(e))
+                    print(e)
                     await websocket.send('>>> try to see if there are any problems with things such as lines starting with \'%\'\n')
 
                     finished = True

@@ -1,60 +1,78 @@
-def moveFirstTime(func):
+from .constants import DIRECTIONS, RIGHT, LEFT, UP, DOWN
+from .exceptions import DotsExit
+from .vector import Pos
+from .chars import SingletonLibInnerWarpChar
+
+
+def move_first_time(func):
     def _decorator(self, *args, **kwargs):
         # print('self is {0}'.format(self))
         # print(self.a)
         if not self.hasRun:
-            self.moveParent()
+            self.move_parent()
             self.hasRun = True
         else:
             func(self, *args, **kwargs)
+
     return _decorator
+
+
+def autodetect_next_state(dot, char):
+    return TravelState(dot).next(char)
 
 
 class State(object):
     def __init__(self, parent):
-        self.parent = parent
-        self.hasRun = False
+        """
+        Describe the state of a dot with functions to get to the next state ofthe state machine.
 
+        :param dots.dot.Dot parent:
+        """
+
+        self.env = parent.env
+        self.parent = parent
+
+        self.hasRun = False
         self.isWaiting = False
+        self.id_mode = False
 
     def next(self, char):
-        self.parent.callbacks.on_finish()
         raise Exception("State Next Method Not Implemented!")
 
     def run(self, char):
-        self.parent.callbacks.on_finish()
         raise Exception("State Run Method Not Implemented!")
 
-    def setParentState(self, newState):
-        self.parent.state = newState(self.parent)
+    def move_parent(self):
+        self.parent.move()
 
-    def moveParent(self, direction=None):
-        if direction is None:
-            direction = self.parent.dir
+    # define lambda like this: lambda dir: (your func or constant)
+    def change_parent_dir_with_func(self, newDirLambda):
+        self.parent.dir = newDirLambda(self.parent.dir)
 
-        self.parent.x += direction[0]
-        self.parent.y += direction[1]
+    def set_parent_direction(self, direction):
+        """
+        Sets the direction of the dot
 
-    # define lambda like this: lambda x, y: (your func or constant)
-    def changeParentDirWithFunc(self, newDirLambda):
-        self.parent.dir = list(newDirLambda(*self.parent.dir))
+        :param dots.vector.Pos direction: The new direction of the dot.
+        """
 
-    def setParentDir(self, newDirX, newDirY):
-        self.parent.dir = [newDirX, newDirY]
+        self.parent.dir = direction
 
-    def isParentMovingVert(self):
-        return self.parent.dir[1] != 0
+    def is_moving_vert(self):
+        """True if the dot is moving verticaly."""
+        return self.parent.dir.y != 0
 
-    def isParentMovingHoriz(self):
-        return self.parent.dir[0] != 0
+    def is_moving_horiz(self):
+        """True if the dot is moving horizontally."""
+        return self.parent.dir.x != 0
 
     def __str__(self):
         return type(self).__name__
 
-    def isDeadState(self):
+    def is_dead(self):
         return False
 
-    def isTwoDotState(self):
+    def is_two_dots(self):
         return False
 
 
@@ -62,25 +80,25 @@ class TravelState(State):
     def next(self, char):
         if char == ' ':
             return DeadState(self.parent)
+        elif char == '&' and not char.isOper():
+            return ExitState(self.parent)
         elif char == '~':
             return TildeState(self.parent)
         elif char == '#':
             return ValueState(self.parent)
         elif char == '@':
-            return AddressState(self.parent)
+            return IdState(self.parent)
         elif char == '$':
             return PrintState(self.parent)
-        elif char in ('[', ']',) and self.isParentMovingVert():
-            return DeadState(self.parent)
-        elif char in ('{', '}',) and self.isParentMovingVert():
+        elif char in '[]{}' and self.is_moving_vert():
             return DeadState(self.parent)
         elif char.isSquareOper():
             return OperSquareState(self.parent)
         elif char.isCurlyOper():
             return OperCurlyState(self.parent)
-        elif char == '-' and self.isParentMovingVert():
+        elif char == '-' and self.is_moving_vert():
             return DeadState(self.parent)
-        elif char == '|' and self.isParentMovingHoriz():
+        elif char == '|' and self.is_moving_horiz():
             return DeadState(self.parent)
         elif char == ':' and self.parent.value == 0:
             return DeadState(self.parent)
@@ -91,132 +109,132 @@ class TravelState(State):
 
     def run(self, char):
         if char == '\\':
-            self.changeParentDirWithFunc(lambda x, y: (y, x))
+            self.change_parent_dir_with_func(lambda dir: Pos(dir.y, dir.x))
         elif char == '/':
-            self.changeParentDirWithFunc(lambda x, y: (-y, -x))
+            self.change_parent_dir_with_func(lambda dir: Pos(-dir.y, -dir.x))
         elif char == '(':
-            self.setParentDir(1, 0)
+            self.set_parent_direction(RIGHT)
         elif char == ')':
-            self.setParentDir(-1, 0)
+            self.set_parent_direction(LEFT)
         elif char == '>':
-            if self.isParentMovingVert():
-                self.setParentDir(1, 0)
+            if self.is_moving_vert():
+                self.set_parent_direction(RIGHT)
         elif char == '<':
-            if self.isParentMovingVert():
-                self.setParentDir(-1, 0)
+            if self.is_moving_vert():
+                self.set_parent_direction(LEFT)
         elif char == '^':
-            if self.isParentMovingHoriz():
-                self.setParentDir(0, -1)
+            if self.is_moving_horiz():
+                self.set_parent_direction(UP)
         elif char == 'v':
-            if self.isParentMovingHoriz():
-                self.setParentDir(0, 1)
+            if self.is_moving_horiz():
+                self.set_parent_direction(DOWN)
         elif char == '*':
-            for xoffset in range(-1, 1 + 1):
-                for yoffset in range(-1, 1 + 1):
-                    # If the abs vals of both offsets are one, skip
-                    if not abs(xoffset) ^ abs(yoffset):
-                        continue
+            for dir in DIRECTIONS:
 
-                    if [-xoffset, -yoffset] == list(self.parent.dir)\
-                            or [xoffset, yoffset] == list(self.parent.dir):
-                        continue
+                if self.parent.dir in (dir, -dir):
+                    continue
 
-                    abs_offset_x = self.parent.x + xoffset
-                    abs_offset_y = self.parent.y + yoffset
+                next_pos = self.parent.pos + dir
 
-                    if self.parent.world.doesLocExist(abs_offset_x, abs_offset_y)\
-                            and self.parent.world.getCharAt(abs_offset_x, abs_offset_y) != ' ':
+                if self.env.world.does_loc_exist(next_pos) and self.env.world.get_char_at(next_pos) != ' ':
 
-                        from .dot import Dot
-                        new_dot = Dot(x=self.parent.x, y=self.parent.y, world=self.parent.world, callbacks=self.parent.callbacks, func_to_create_dots=self.parent.func_to_create_dots, func_to_get_dots=self.parent.func_to_get_dots, address=self.parent.address, value=self.parent.value, direction=[xoffset, yoffset], state=TravelState, stack=self.parent.stack[:])
+                    new_dot = self.parent.copy()
+                    new_dot.dir = dir
+                    new_dot.move()
 
-                        # new_dot.state.moveParent()
-
-                        self.parent.func_to_create_dots(new_dot)
-        elif char.isSingletonLibReturnWarp():
-            (self.parent.x, self.parent.y) = self.parent.stack.pop()
+                    self.env.dots.append(new_dot)
+        elif isinstance(char, SingletonLibInnerWarpChar):
+            self.parent.pos = self.parent.stack.pop()
         elif char.isWarp():
             if char.isSingletonLibWarp():
-                self.parent.stack.append((self.parent.x, self.parent.y))
+                self.parent.stack.append(self.parent.pos)
 
-            (self.parent.x, self.parent.y) = char.get_dest_loc()
+            self.parent.pos = char.get_dest_loc()
         else:
             pass
 
-        self.moveParent()
+        self.move_parent()
 
 
 class ValueState(State):
     def __init__(self, parent):
-        State.__init__(self, parent)
-        self.firstDigit = True
+        super().__init__(parent)
+        self.first_digit = True
+        self.neg = False
 
     def next(self, char):
-        if not char.isdecimal() and char != '?':
-            return TravelState(self.parent)
-        else:
+        if char.isdecimal() or char == '?':
             return self
+        else:
+            return autodetect_next_state(self.parent, char)
 
-    @moveFirstTime
+    @move_first_time
     def run(self, char):
         if char.isdecimal():
-            if self.firstDigit:
+            if self.first_digit:
                 self.parent.value = int(char)
-                self.firstDigit = False
+                self.first_digit = False
             else:
                 self.parent.value = self.parent.value * 10 + int(char)
         elif char == '?':
-            self.parent.value = int(self.parent.callbacks.get_input())
+            self.parent.value = int(self.env.io.get_input())
 
-        self.moveParent()
+        self.move_parent()
 
 
-class AddressState(State):
+class IdState(State):
     def __init__(self, parent):
-        State.__init__(self, parent)
-        self.firstDigit = True
+        super().__init__(parent)
+        self.first_digit = True
+        self.setting_id = False
 
     def next(self, char):
-        if char in ('[', ']', '{', '}'):
-            if self.isParentMovingVert():
+        if char.isdecimal() or char == '?':
+            return self
+        elif self.setting_id:
+            return autodetect_next_state(self.parent, char)
+        elif char in '[]{}':
+            if self.is_moving_vert():
                 return DeadState(self.parent)
             else:
                 return self
         elif char.isSquareOper():
-            return OperSquareState(self.parent, addressMode=True)
+            return OperSquareState(self.parent, id_mode=True)
         elif char.isCurlyOper():
-            return OperCurlyState(self.parent, addressMode=True)
-        elif char.isdecimal() or char == '?':
-            return self
+            return OperCurlyState(self.parent, id_mode=True)
         elif char == '~':
-            return TildeState(self.parent, addressMode=True)
+            return TildeState(self.parent, id_mode=True)
         else:
-            return TravelState(self.parent)
+            return autodetect_next_state(self.parent, char)
 
-    @moveFirstTime
+    @move_first_time
     def run(self, char):
         if char.isdecimal():
-            if self.firstDigit:
-                self.parent.address = int(char)
-                self.firstDigit = False
+            self.setting_id = True
+            if self.first_digit:
+                self.parent.id = int(char)
+                self.first_digit = False
             else:
-                self.parent.address = self.parent.address * 10 + int(char)
+                self.parent.id = self.parent.id * 10 + int(char)
         elif char == '?':
-            self.parent.address = int(self.parent.callbacks.get_input())
+            self.parent.id = int(self.env.io.get_input())
         else:
             pass
 
-        self.moveParent()
+        self.move_parent()
 
 
 class PrintState(State):
-    def __init__(self, parent):
-        State.__init__(self, parent)
-        self.newline = True
+    def __init__(self, parent, newline=True):
+        super().__init__(parent)
+        self.newline = newline
         self.asciiMode = False
+        self.pendingExit = False
 
     def next(self, char):
-        if char in ('$', '_', 'a', '#', '@',):
+        if self.pendingExit:
+            return autodetect_next_state(self.parent, char)
+        elif char in '$_a#@':
             return self
         elif char == ' ':
             return DeadState(self.parent)
@@ -225,9 +243,9 @@ class PrintState(State):
         elif char == "'":
             return PrintSingleQuoteState(self.parent, newline=self.newline)
         else:
-            return TravelState(self.parent)
+            return autodetect_next_state(self.parent, char)
 
-    @moveFirstTime
+    @move_first_time
     def run(self, char):
         if char == '_':
             self.newline = False
@@ -242,9 +260,10 @@ class PrintState(State):
             if self.newline:
                 data = str(data) + '\n'
 
-            self.parent.callbacks.on_output(data)
+            self.env.io.on_output(data)
+            self.pendingExit = True
         elif char == '@':
-            data = self.parent.address
+            data = self.parent.id
 
             if self.asciiMode:
                 data = chr(data)
@@ -252,185 +271,166 @@ class PrintState(State):
             if self.newline:
                 data = str(data) + '\n'
 
-            self.parent.callbacks.on_output(data)
+            self.env.io.on_output(data)
+            self.pendingExit = True
         else:
             pass
 
-        self.moveParent()
+        self.move_parent()
 
 
-class PrintDoubleQuoteState(State):
+class PrintDoubleQuoteState(PrintState):
     def __init__(self, parent, newline=True):
-        State.__init__(self, parent)
-        self.newline = newline
-        self.pendingExit = False
+        super().__init__(parent, newline)
+        self.text_buffer = ''
 
     def next(self, char):
         if self.pendingExit:
-            return TravelState(self.parent)
+            return autodetect_next_state(self.parent, char)
         else:
             return self
 
-    @moveFirstTime
+    @move_first_time
     def run(self, char):
         if char == '"':
             if self.newline:
-                self.parent.callbacks.on_output('\n')
+                self.text_buffer += '\n'
+
+            self.env.io.on_output(self.text_buffer)
 
             self.pendingExit = True
         else:
-            self.parent.callbacks.on_output(char)
+            self.text_buffer += char
 
-        self.moveParent()
+        self.move_parent()
 
 
-class PrintSingleQuoteState(State):
-    def __init__(self, parent, newline=True):
-        State.__init__(self, parent)
-        self.newline = newline
-        self.pendingExit = False
+class PrintSingleQuoteState(PrintState):
 
     def next(self, char):
         if self.pendingExit:
-            return TravelState(self.parent)
+            return autodetect_next_state(self.parent, char)
         else:
             return self
 
-    @moveFirstTime
+    @move_first_time
     def run(self, char):
         if char == "'":
             if self.newline:
-                self.parent.callbacks.on_output('\n')
+                self.env.io.on_output('\n')
 
             self.pendingExit = True
         else:
-            self.parent.callbacks.on_output(char)
+            self.env.io.on_output(char)
 
-        self.moveParent()
+        self.move_parent()
 
 
 class TwoDotState(State):
-    def __init__(self, parent, isMaster, addressMode=None):
-        State.__init__(self, parent)
+    def __init__(self, parent, isMaster, id_mode=None):
+        super().__init__(parent)
 
-        if addressMode is None:
-            self.addressMode = False
+        if id_mode is None:
+            self.id_mode = False
         else:
-            self.addressMode = addressMode
+            self.id_mode = id_mode
 
         self.isMaster = isMaster(self)
 
         self.isWaiting = True
         self.age = 0
 
-    def isTwoDotState(self):
+    def is_two_dots(self):
         return True
 
     def next(self, char):
         if self.isWaiting:
             return self
         else:
-            return TravelState(self.parent)
+            return autodetect_next_state(self.parent, char)
 
     def run(self, char):
+        self.isWaiting = True
+
         if self.isMaster:
             # We want to find the companion dot that has been waiting the
             # longest. At the same time, if we find a dot that is also a master
             # that has been waiting longer than this, keep on waiting
-            candidate_index = -1
-            best_candidate_age = -1
 
-            ready_to_operate = False
+            wait_here = [d for  d in self.env.dots if d.pos == self.parent.pos and d.state.is_two_dots()]
+            masters_here = [d for d in wait_here if d.state.isMaster]
+            other_here = [d for d in wait_here if not d.state.isMaster]
 
-            self_x = self.parent.x
-            self_y = self.parent.y
+            if masters_here and other_here:
+                oldest_master = max(masters_here, key=lambda d:d.state.age)
+                oldest_other = max(other_here, key=lambda d:d.state.age)
 
-            for idx, dot in enumerate(self.parent.func_to_get_dots()):
-                if dot.x == self_x and dot.y == self_y and dot.state.isTwoDotState():
-                    if dot.state.isMaster:
-                        if dot.state.age > self.age:
-                            ready_to_operate = False
-                            break
+                if oldest_master is self.parent:
+                    candidate = oldest_other
+
+                    if candidate.state.id_mode:
+                        candidate_par = candidate.id
                     else:
-                        age = dot.state.age
-                        if age > best_candidate_age:
-                            candidate_index = idx
-                            ready_to_operate = True
+                        candidate_par = candidate.value
 
-            if ready_to_operate:
-                candidate = self.parent.func_to_get_dots()[candidate_index]
+                    if self.id_mode:
+                        self_par = self.parent.id
+                    else:
+                        self_par = self.parent.value
 
-                if candidate.state.addressMode:
-                    candidate_par = candidate.address
-                else:
-                    candidate_par = candidate.value
+                    self.do_operation(char, self_par, candidate_par, candidate)
 
-                if self.addressMode:
-                    self_par = self.parent.address
-                else:
-                    self_par = self.parent.value
+                    candidate.state = DeadState(candidate)
 
-                self.doOperation(char, self_par, candidate_par, candidate,
-                                 candidate_index)
+                    # FIXME: This is not a good idea...
+                    self.parent.state = TravelState(self.parent)
+                    self.move_parent()
 
-                candidate.state = DeadState(candidate)
-
-                # FIXME: This is not a good idea...
-                self.parent.state = TravelState(self.parent)
-
-                self.moveParent()
-
-                self.isWaiting = False
-            else:
-                self.isWaiting = True
-        else:
-            self.isWaiting = True
+                    self.isWaiting = False
 
         self.age += 1
 
-    def doOperation(self, candidate, candidate_idx):
+    def do_operation(self, *args, **kwargs):
         raise Exception("DoOperation not implemented!")
 
 
 class OperState(TwoDotState):
-    def __init__(self, parent, isMaster, addressMode=False):
-        TwoDotState.__init__(self, parent, isMaster, addressMode)
+    def __init__(self, parent, isMaster, id_mode=False):
+        TwoDotState.__init__(self, parent, isMaster, id_mode)
 
-    def doOperation(self, char, self_par, candidate_par, candidate,
-                    candidate_idx):
+    def do_operation(self, char, self_par, candidate_par, candidate):
         result = char.calc(self_par, candidate_par) * 1
         # NOTE: the `* 1` converts a boolean into an integer
 
-        if self.addressMode:
-            self.parent.address = result
+        if self.id_mode:
+            self.parent.id = result
         else:
             self.parent.value = result
 
 
 class OperSquareState(OperState):
-    def __init__(self, parent, addressMode=False):
+    def __init__(self, parent, id_mode=False):
         OperState.__init__(self, parent,
-                           isMaster=(lambda self: self.isParentMovingVert()),
-                           addressMode=addressMode)
+                           isMaster=(lambda self: self.is_moving_vert()),
+                           id_mode=id_mode)
 
 
 class OperCurlyState(OperState):
-    def __init__(self, parent, addressMode=False):
+    def __init__(self, parent, id_mode=False):
         OperState.__init__(self, parent,
-                           isMaster=(lambda self: self.isParentMovingHoriz()),
-                           addressMode=addressMode)
+                           isMaster=(lambda self: self.is_moving_horiz()),
+                           id_mode=id_mode)
 
 
 class TildeState(TwoDotState):
-    def __init__(self, parent, addressMode=False):
+    def __init__(self, parent, id_mode=False):
         TwoDotState.__init__(self, parent,
-                             isMaster=(lambda self: self.isParentMovingHoriz()),
-                             addressMode=addressMode)
+                             isMaster=(lambda self: self.is_moving_horiz()),
+                             id_mode=id_mode)
 
-    def doOperation(self, char, self_par, candidate_par, candidate,
-                    candidate_idx):
+    def do_operation(self, char, self_par, candidate_par, candidate):
         if candidate_par != 0:
-            self.setParentDir(0, -1)
+            self.set_parent_direction(UP)
 
 
 class DeadState(State):
@@ -440,5 +440,13 @@ class DeadState(State):
     def run(self, char):
         pass
 
-    def isDeadState(self):
+    def is_dead(self):
         return True
+
+
+class ExitState(State):
+    def next(self, char):
+        raise DotsExit
+
+    def run(self, char):
+        raise DotsExit

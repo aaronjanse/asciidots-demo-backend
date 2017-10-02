@@ -1,16 +1,50 @@
 import threading
-from .world import World
-from .dot import Dot
 
-from .states import DeadState
+from .exceptions import DotsExit
+from .dot import Dot
+from .world import World
 
 
 class AsciiDotsInterpreter(object):
-    def __init__(self, program, program_dir, io_callbacks):
-        self.world = World(program, program_dir)
-        self.io_callbacks = io_callbacks
+    def __init__(self, env, program, program_dir, run_in_parallel):
+        """
+        Create a new instance of the interpreter to run the program.
+
+        :param dots.environement.Env env: The environement for the program
+        :param str program: The code of the program
+        :param str program_dir: The path to the program directory
+        :param bool run_in_parallel: temporarily, changes the way dots move : one by one or all at the same time
+        """
+
+        self.env = env
+        self.env.interpreter = self
+        self.env.world = World(env, program, program_dir)
+        self.env.dots = []
+
+        self.needs_shutdown = False
 
         self._setup_dots()
+        self.run_in_parallel = run_in_parallel
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.terminate()
+        self.env.io.on_finish()
+
+        if isinstance(exc_tb, DotsExit):
+            # we don't want the exception re-raised
+            return True
+
+    def _setup_dots(self):
+        """Fill the dot list with dots from the starting points in the world."""
+
+        self.env.dots = []
+        for pos in self.env.world.get_coords_of_dots():
+            new_dot = Dot(self.env, pos)
+
+            self.env.dots.append(new_dot)
 
     def run(self, run_in_separate_thread=None, make_thread_daemon=None):
         """
@@ -20,45 +54,46 @@ class AsciiDotsInterpreter(object):
         run_in_separate_thread -- If set to True, the program will be interpreted in a separate thread
         make_thread_daemon -- Controls whether a thread created by enabling in_seperate_thread will be run as daemon
         """
-        if run_in_separate_thread is None:
-            run_in_separate_thread = False
-
-        if make_thread_daemon is None:
-            make_thread_daemon = False
-
-        self.needsShutdown = False
 
         if run_in_separate_thread:
             inter_thread = threading.Thread(target=self.run, daemon=make_thread_daemon)
             inter_thread.start()
             return
 
-        while not self.needsShutdown and len(self.dots) > 0:
-            self._dots_for_next_tick = []
+        with self:
+            while not self.needs_shutdown and len(self.env.dots) > 0:
 
-            for dot in self.dots:
-                dot.simulate_tick()
+                if self.run_in_parallel:
+                    self.parallel_tick()
+                else:
+                    self.async_tick()
 
-                if not dot.state.isDeadState():
-                    self._dots_for_next_tick.append(dot)
+            raise DotsExit
 
-            self.dots = self._dots_for_next_tick
+    def parallel_tick(self):
+        """Simulate a tick in parallele mode"""
 
-        self.io_callbacks.on_finish()
+        dots = self.env.dots[:]
+        for dot in dots:
+            dot.next()
+
+        for dot in dots:
+            dot.run()
+
+        for dot in dots:
+            if dot.state.is_dead():
+                self.env.dots.remove(dot)
+
+        self.env.io.on_microtick(None)
+
+    def async_tick(self):
+        """Simulate a tick in async mode."""
+        for dot in self.env.dots[:]:
+            dot.simulate_tick(not self.run_in_parallel)
+
+            if dot.state.is_dead():
+                self.env.dots.remove(dot)
 
     def terminate(self):
-        self.needsShutdown = True
-
-    def get_all_dots(self):
-        return self.dots[:]
-
-    def _setup_dots(self):
-        dot_locations = self.world.get_coords_of_dots()
-
-        self.dots = []
-        for x, y in dot_locations:
-            new_dot = Dot(x, y, world=self.world, callbacks=self.io_callbacks, func_to_create_dots=self._add_dot, func_to_get_dots=self.get_all_dots)
-            self.dots.append(new_dot)
-
-    def _add_dot(self, dot):
-        self._dots_for_next_tick.append(dot)
+        """The program will shut down at the next operation."""
+        self.needs_shutdown = True

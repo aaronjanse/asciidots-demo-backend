@@ -1,12 +1,12 @@
 `` A is the start value
 `` B is the end value
-`` O is the output (with the address of A)
+`` O is the output (with the id of A)
 `` C is the output when the loop ends
 ``   O
 `` A + B
 ``   C
 
-%^X `` make sure that X doesn't conflict with anything
+%^X
 %$AOBC
 
   C
@@ -15,18 +15,14 @@ B-X-A
   |
   O
 
-    /-\  /-------------\
-    | C  |             |
- /--+----+-\       O   |
- |  |    | |       |   |
-[+]-+-1#-<-*-*-{-}-/   |
- |  |      | #  |      |
- \--~--*-<-/ 1  |      |
-    |  | |   \--/      |
-   [<]-* \--\          |
-    |  |    |          |
-   /*  # A--*----------/
-   \~< 1
-    \+-/
-     |
-     \-B
+  /-------{+}-\
+  |        1  | O
+  |        #  *-/
+A->-*-----~*--/
+    |     | /-\
+    \-{>}-*-v C
+    /--*-<--~-\
+    |   [-]-\ |
+    \----+--+-/
+         *#1/
+         \B

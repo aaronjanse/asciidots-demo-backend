@@ -48,7 +48,6 @@ class OperChar(Char):
                 '-': (lambda x, y: x - y),
                 '*': (lambda x, y: x * y),
                 '/': (lambda x, y: x / y),
-                '÷': (lambda x, y: x / y),
                 '^': (lambda x, y: x ** y),
                 '%': (lambda x, y: x % y),
 
@@ -58,11 +57,10 @@ class OperChar(Char):
                 '!': (lambda x, y: x != y),
 
                 '=': (lambda x, y: x == y),
-                '≠': (lambda x, y: x != y),
                 '>': (lambda x, y: x > y),
-                '≥': (lambda x, y: x >= y),
+                'G': (lambda x, y: x >= y),
                 '<': (lambda x, y: x < y),
-                '≤': (lambda x, y: x <= y)
+                'L': (lambda x, y: x <= y)
             }
 
             self.func = function_dict[self]
@@ -85,6 +83,7 @@ class WarpChar(Char):
         super().__init__(value)
 
         self._teleporter_id = None
+        self._dest_loc = None
 
     def isWarp(self):
         return True
@@ -95,14 +94,32 @@ class WarpChar(Char):
     def get_id(self):
         return self._teleporter_id
 
-    def set_dest_loc(self, x, y):
-        self._dest_loc = (x, y)
+    def set_dest_loc(self, pos):
+        self._dest_loc = pos
 
     def get_dest_loc(self):
         return self._dest_loc
 
 
 class LibWarpChar(WarpChar):
+    def isLibWarp(self):
+        return True
+
+
+class LibInnerWarpChar(LibWarpChar):
+    def isLibWarp(self):
+        return True
+
+    def set_dest_loc(self, pos):
+        raise Exception(
+            "SingletonLibReturnWarpChar: cannot set destination; use the stack!")
+
+    def get_dest_loc(self):
+        raise Exception(
+            "SingletonLibReturnWarpChar: unknown destination; use the stack!")
+
+
+class LibOuterWarpChar(LibWarpChar):
     def isLibWarp(self):
         return True
 
@@ -114,12 +131,10 @@ class SingletonLibWarpChar(LibWarpChar):
 
 
 # NB: Singleton refers to the library written in ascii dots, not the class itself!
-class SingletonLibReturnWarpChar(SingletonLibWarpChar):
-    def isSingletonLibReturnWarp(self):
-        return True
+class SingletonLibOuterWarpChar(SingletonLibWarpChar):
+    pass
 
-    def set_dest_loc(self, x, y):
-        raise Exception("SingletonLibReturnWarpChar: cannot set destination; use the stack!")
 
-    def get_dest_loc(self):
-        raise Exception("SingletonLibReturnWarpChar: unknown destination; use the stack!")
+# NB: Singleton refers to the library written in ascii dots, not the class itself!
+class SingletonLibInnerWarpChar(LibInnerWarpChar, SingletonLibWarpChar):
+    pass
