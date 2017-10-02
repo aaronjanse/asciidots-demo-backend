@@ -129,7 +129,7 @@ async def handle_sockets(websocket, path):
                 elif char in '#@~' or char.isOper():
                     pending_txt += '\033[0;34m'+char+'\033[0m' # Blue
                 elif char!='\n':
-                    pending_txt += '\033[0;37m'+char+'\033[0m' # White
+                    pending_txt += char # White
 
             pending_txt += '\n'
             display_y += 1
