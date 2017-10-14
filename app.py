@@ -10,7 +10,7 @@ import os
 
 os.chdir('./asciidots')
 
-from asciidots.dots.environement import Env
+from asciidots.dots.environment import Env
 from asciidots.dots.interpreter import AsciiDotsInterpreter
 from asciidots.dots.callbacks import IOCallbacksStorageConstructor
 
