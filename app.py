@@ -260,12 +260,7 @@ async def handle_sockets(websocket, path):
 
 print('Starting server...')
 
-port = 5000
-
-try:
-    port = os.environ['PORT']
-except:
-    pass
+port = 8080
 
 start_server = websockets.serve(handle_sockets, '0.0.0.0', int(port))
 
