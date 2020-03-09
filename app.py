@@ -8,11 +8,9 @@ import time
 
 import os
 
-os.chdir('./asciidots')
-
-from asciidots.dots.environment import Env
-from asciidots.dots.interpreter import AsciiDotsInterpreter
-from asciidots.dots.callbacks import IOCallbacksStorageConstructor
+from dots.environment import Env
+from dots.interpreter import AsciiDotsInterpreter
+from dots.callbacks import IOCallbacksStorageConstructor
 
 import ssl
 
@@ -47,7 +45,7 @@ async def handle_sockets(websocket, path):
     interpreter = None
     interpreter_thread = None
 
-    def input_func():
+    def input_func(ascii_char=None):
         nonlocal pending_input
         nonlocal input_done
         nonlocal input_result
